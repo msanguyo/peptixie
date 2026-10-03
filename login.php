@@ -1,0 +1,7 @@
+<?php
+require_once 'config/auth.php'; if(is_logged_in()) redirect('index.php'); $error='';
+if($_SERVER['REQUEST_METHOD']==='POST'){ verify_csrf(); $phone=trim($_POST['phone']??''); $password=$_POST['password']??''; $stmt=$pdo->prepare("SELECT * FROM users WHERE phone=? LIMIT 1"); $stmt->execute([$phone]); $u=$stmt->fetch(); if($u&&password_verify($password,$u['password_hash'])){session_regenerate_id(true);$_SESSION['user_id']=(int)$u['id'];$_SESSION['is_admin']=(int)$u['is_admin']===1;redirect('index.php');} $error='Invalid phone number or password.';}
+$page_title='Login — PEPTIXIE'; require 'config/header.php'; ?>
+<div class="auth-card"><div class="auth-brand small"><img src="assets/images/peptixie_logo.jpeg">PEPTIXIE 💉</div><h1>Login</h1><p class="muted">Enter your phone number and password.</p><?php if($error): ?><div class="alert error"><?=e($error)?></div><?php endif; ?>
+<form method="post"><input type="hidden" name="csrf" value="<?=e(csrf_token())?>"><label>Phone Number<input name="phone" inputmode="tel" autocomplete="tel" required></label><label>Password<input type="password" name="password" autocomplete="current-password" required></label><button class="btn btn-block">Login</button></form><p>No account yet? <a href="register.php">Register</a></p></div>
+<?php require 'config/footer.php'; ?>

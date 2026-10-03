@@ -1,0 +1,14 @@
+<?php
+require_once 'config/auth.php'; require_login(); if(is_admin()||has_settled_payment()) redirect('index.php'); $error='';
+if($_SERVER['REQUEST_METHOD']==='POST'){verify_csrf();$sender=trim($_POST['sender_name']??'');$gcash=trim($_POST['gcash_number']??'');
+ if(!$sender||!$gcash||empty($_FILES['receipt']['name']))$error='Please enter sender name, GCash number, and upload your payment screenshot.';
+ elseif($_FILES['receipt']['error']!==UPLOAD_ERR_OK)$error='The screenshot upload failed.'; else {$file=$_FILES['receipt'];$allowed=['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp'];$mime=(new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+  if(!isset($allowed[$mime])||$file['size']>5*1024*1024)$error='Upload a JPG, PNG, or WEBP screenshot up to 5 MB.'; else {$dir=__DIR__.'/uploads/payment_receipts';if(!is_dir($dir))mkdir($dir,0755,true);$filename='payment_'.$_SESSION['user_id'].'_'.bin2hex(random_bytes(8)).'.'.$allowed[$mime];if(!move_uploaded_file($file['tmp_name'],$dir.'/'.$filename))$error='Unable to save screenshot.';else{$stmt=$pdo->prepare("INSERT INTO payments(user_id,amount,sender_name,gcash_number,receipt_filename,status) VALUES(?,?,?,?,?,'Pending')");$stmt->execute([$_SESSION['user_id'],300,$sender,$gcash,$filename]);flash('success','Payment proof submitted. Please wait for validation.');redirect('payment.php');}}}
+}
+$stmt=$pdo->prepare("SELECT * FROM payments WHERE user_id=? ORDER BY created_at DESC LIMIT 1");$stmt->execute([$_SESSION['user_id']]);$payment=$stmt->fetch();$qr=__DIR__.'/assets/images/gcash_qr.png';
+$page_title='For Payment — PEPTIXIE';require 'config/header.php'; ?>
+<div class="auth-card wide"><div class="auth-brand small">PEPTIXIE 💉</div><h1>For Payment</h1><p><b>Scan the QR code below</b> to pay the one-time ₱300 fee.</p>
+<div class="qr-box"><?php if(file_exists($qr)): ?><img src="assets/images/gcash_qr.png" alt="GCash QR Code"><?php else: ?><div class="qr-placeholder">GCash QR Code<br><small>Admin must upload the QR code in Admin → Payments.</small></div><?php endif; ?></div>
+<?php if($payment&&$payment['status']==='Pending'): ?><div class="alert">⏳ Payment received and waiting for validation.</div>
+<?php elseif($payment&&$payment['status']==='Denied'): ?><div class="alert error">❌ Payment was denied. Submit a new screenshot.</div><?php else: ?><div class="fee-box"><strong>₱300.00</strong><span>One-time payment</span></div><form method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?=e(csrf_token())?>"><label>Sender Name<input name="sender_name" required></label><label>GCash Number<input name="gcash_number" required></label><label>Attachment / Payment Screenshot<input type="file" name="receipt" accept="image/jpeg,image/png,image/webp" required></label><button class="btn btn-block">Submit Payment Screenshot</button></form><?php endif; ?><a class="logout-link" href="logout.php">Logout</a></div>
+<?php require 'config/footer.php'; ?>

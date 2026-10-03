@@ -1,0 +1,1 @@
+<?php require_once 'config/auth.php'; if(is_logged_in()) redirect('index.php'); redirect('login.php'); ?>

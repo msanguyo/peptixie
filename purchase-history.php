@@ -1,0 +1,5 @@
+<?php require_once 'config/auth.php';require_payment();$stmt=$pdo->prepare("SELECT o.* FROM orders o WHERE o.user_id=? AND o.status IN ('Approved','To Ship','To Receive','Delivered','Cancelled') ORDER BY o.created_at DESC");$stmt->execute([$_SESSION['user_id']]);$orders=$stmt->fetchAll();$page_title='Purchase History — PEPTIXIE';require 'config/header.php';?>
+<h1>Purchase History</h1><p class="muted">Approved orders appear here and remain permanently after delivery or cancellation.</p>
+<?php if(!$orders): ?><div class="empty">No purchase history yet.</div><?php endif; ?>
+<?php foreach($orders as $o): ?><div class="history-row"><div><b>#<?=e($o['order_number'])?></b><span class="status"><?=e($o['status'])?></span><small><?=date('M d, Y h:i A',strtotime($o['created_at']))?> · <?=e($o['delivery_method'])?></small><?php if($o['tracking_number']): ?><small>J&T Tracking: <?=e($o['tracking_number'])?></small><?php endif; ?></div><strong><?=money((float)$o['total'])?></strong></div><?php endforeach; ?>
+<?php require 'config/footer.php'; ?>
